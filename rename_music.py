@@ -3,14 +3,12 @@ import os
 import asyncio
 from shazamio import Shazam, Serialize
 
-async def identify(shazam, song_file):
+async def identify(song_file):
     title = ""
     subtitle = ""
     song_file_extension = os.path.splitext(song_file)[1]
 
-    # test
-    return os.path.splitext(song_file)[0] + " : " + song_file_extension
-
+    shazam = Shazam()
     out = await shazam.recognize_song(song_file)
     serialized = Serialize.full_track(out)
 
@@ -26,10 +24,10 @@ async def identify(shazam, song_file):
     
     return title + " - " + subtitle + song_file_extension
 
-async def identifier_coroutine(shazam, queue, data, start_index, stride):
+async def identifier_coroutine(queue, data, start_index, stride):
     for i in range(start_index, len(data), stride):
         item = data[i]
-        song_title = await identify(shazam, item)
+        song_title = await identify(item)
         await queue.put([item, song_title])
 
 async def renamer_coroutine(queue):
@@ -40,12 +38,12 @@ async def renamer_coroutine(queue):
         # Notify the queue that the item has been processed
         queue.task_done()
 
-async def process(shazam, file_list, num_coroutines):
+async def process(file_list, num_coroutines):
     song_name_queue = asyncio.Queue()
 
     # Create producer tasks, each with a different start index and the same stride
     identifiers = [
-        asyncio.create_task(identifier_coroutine(shazam, song_name_queue, file_list, i, num_coroutines))
+        asyncio.create_task(identifier_coroutine(song_name_queue, file_list, i, num_coroutines))
         for i in range(num_coroutines)
     ]
 
@@ -73,11 +71,8 @@ if __name__ == "__main__":
         if file_extension not in audioFileExtensions:
             print("Error: ", file, " is not an audio file.")
 
-    # Create a single Shazam API instance
-    shazam = Shazam()
-
     num_coroutines = 10
-    asyncio.run(process(shazam, files, num_coroutines))
+    asyncio.run(process(files, num_coroutines))
 
 def rename_file(file, new_name):
     os.rename(file, new_name)

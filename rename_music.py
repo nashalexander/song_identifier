@@ -12,27 +12,30 @@ async def identify(song_file):
     shazam = Shazam()
     random.seed()
 
+    max_attempts = 20
+    out = None
+
     # Shazam throttles song requests, so retry with sleep if exception occurs
-    while True:
+    for attempt in range(max_attempts):
         try:
             out = await shazam.recognize_song(song_file)
             break
         except Exception as e:
-            print(f"Shazam could not recognize the song from file {song_file}, error: {e}")
-            # sleep a random number from 1 to 30
-            # this is to avoid rate limiting
             random_sleep_time = random.randint(1, 30)
             await asyncio.sleep(30)
     
+    if out is None:
+        raise Exception(f"Shazam could not recognize the song from file {song_file}")
+
     serialized = Serialize.full_track(out)
 
     if serialized.track.title is None:
-        print(f"Song name of {song_file} not found")
+        raise Exception(f"Song name of {song_file} not found")
     else:
         title = serialized.track.title
 
     if serialized.track.subtitle is None:
-        print(f"Song artist of {song_file} not found")
+        raise Exception(f"Song artist of {song_file} not found")
     else:
         subtitle = serialized.track.subtitle
     
@@ -41,8 +44,11 @@ async def identify(song_file):
 async def identifier_coroutine(queue, data, start_index, stride):
     for i in range(start_index, len(data), stride):
         item = data[i]
-        song_title = await identify(item)
-        await queue.put([item, song_title])
+        try:
+            song_title = await identify(item)
+            await queue.put([item, song_title])
+        except Exception as e:
+            print(e)
 
 async def renamer_coroutine(queue):
     while True:
@@ -57,7 +63,9 @@ async def process(file_list, num_coroutines):
 
     # Create producer tasks, each with a different start index and the same stride
     identifiers = [
-        asyncio.create_task(identifier_coroutine(song_name_queue, file_list, i, num_coroutines))
+        asyncio.create_task(
+            identifier_coroutine(song_name_queue, file_list, i, num_coroutines)
+        )
         for i in range(num_coroutines)
     ]
 

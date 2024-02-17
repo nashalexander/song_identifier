@@ -8,20 +8,18 @@ if [[ "$1" = "-d" ]]; then
   shift
 fi
 
-all_files="$@"
-
-for file in ${all_files}; do
+for file in "$@"; do
   title=""
   artist=""
 
-  if exiftool ${file} | grep -q 'Title'; then
-    title=$(exiftool -Title -m -p '${Title}' -- ${file})
+  if exiftool -- "${file}" | grep -q 'Title'; then
+    title=$(exiftool -Title -m -p '${Title}' -- "${file}")
   else
     continue
   fi
 
-  if exiftool ${file} | grep -q 'Artist'; then
-    artist=$(exiftool -Title -m -p '${Artist}' -- ${file})
+  if exiftool -- "${file}" | grep -q 'Artist'; then
+    artist=$(exiftool -Title -m -p '${Artist}' -- "${file}")
   fi
 
   file_ext="${file##*.}"

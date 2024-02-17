@@ -2,6 +2,7 @@ import sys
 import os
 import asyncio
 from shazamio import Shazam, Serialize
+import random
 
 async def identify(song_file):
     title = ""
@@ -9,16 +10,29 @@ async def identify(song_file):
     song_file_extension = os.path.splitext(song_file)[1]
 
     shazam = Shazam()
-    out = await shazam.recognize_song(song_file)
+    random.seed()
+
+    # Shazam throttles song requests, so retry with sleep if exception occurs
+    while True:
+        try:
+            out = await shazam.recognize_song(song_file)
+            break
+        except Exception as e:
+            print(f"Shazam could not recognize the song from file {song_file}, error: {e}")
+            # sleep a random number from 1 to 30
+            # this is to avoid rate limiting
+            random_sleep_time = random.randint(1, 30)
+            await asyncio.sleep(30)
+    
     serialized = Serialize.full_track(out)
 
     if serialized.track.title is None:
-        print("Song name of ", song_file, " not found")
+        print(f"Song name of {song_file} not found")
     else:
         title = serialized.track.title
 
     if serialized.track.subtitle is None:
-        print("Song artist of ", song_file, " not found")
+        print(f"Song artist of {song_file} not found")
     else:
         subtitle = serialized.track.subtitle
     
@@ -69,7 +83,7 @@ if __name__ == "__main__":
     for file in files:
         file_extension = os.path.splitext(file)[1]
         if file_extension not in audioFileExtensions:
-            print("Error: ", file, " is not an audio file.")
+            print(f"Error: {file} is not an audio file.")
 
     num_coroutines = 10
     asyncio.run(process(files, num_coroutines))

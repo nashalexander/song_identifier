@@ -15,13 +15,13 @@ for file in ${all_files}; do
   artist=""
 
   if exiftool ${file} | grep -q 'Title'; then
-    title=$(exiftool -Title -m -p '${Title}' ${file})
+    title=$(exiftool -Title -m -p '${Title}' -- ${file})
   else
     continue
   fi
 
   if exiftool ${file} | grep -q 'Artist'; then
-    artist=$(exiftool -Title -m -p '${Artist}' ${file})
+    artist=$(exiftool -Title -m -p '${Artist}' -- ${file})
   fi
 
   file_ext="${file##*.}"
@@ -33,7 +33,7 @@ for file in ${all_files}; do
   if [[ "${answer}" = "y" ]] || [[ "${answer}" = "Y" ]]; then
       file_ext="${file##*.}"
       
-      $MV_CMD "${file}" "${title} - ${artist}.${file_ext}"
+      $MV_CMD -- "${file}" "${title} - ${artist}.${file_ext}"
   else
       echo "${file} not renamed"
   fi

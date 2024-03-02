@@ -22,6 +22,15 @@ for file in "$@"; do
     artist=$(exiftool -Title -m -p '${Artist}' -- "${file}")
   fi
 
+  # if title or artist are empty, skip
+  if [[ -z "${title}" ]] || [[ -z "${artist}" ]]; then
+    continue
+  fi
+
+  # replace / with space from title and artist
+  title="${title//\// }"
+  artist="${artist//\// }"
+
   file_ext="${file##*.}"
 
   echo "${file} : ${title} - ${artist}.${file_ext}"
@@ -31,7 +40,7 @@ for file in "$@"; do
   if [[ "${answer}" = "y" ]] || [[ "${answer}" = "Y" ]]; then
       file_ext="${file##*.}"
       
-      $MV_CMD -- "${file}" "${title} - ${artist}.${file_ext}"
+      $MV_CMD -- "${file}" output/"${title} - ${artist}.${file_ext}"
   else
       echo "${file} not renamed"
   fi

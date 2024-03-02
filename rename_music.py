@@ -4,6 +4,14 @@ import asyncio
 from shazamio import Shazam, Serialize
 import random
 
+def prompt_user_yn(prompt):
+    while True:
+        answer = input(prompt)
+        if answer.lower() in ["y", "yes"]:
+            return True
+        elif answer.lower() in ["n", "no"]:
+            return False
+
 async def identify(song_file):
     title = ""
     subtitle = ""
@@ -22,13 +30,16 @@ async def identify(song_file):
             break
         except Exception as e:
             random_sleep_time = random.randint(1, 30)
-            await asyncio.sleep(30)
+            await asyncio.sleep(random_sleep_time)
     
     if out is None:
         raise Exception(f"Shazam could not recognize the song from file {song_file}")
 
     serialized = Serialize.full_track(out)
 
+    if serialized is None:
+        raise Exception(f"Shazam could not serialize the song from file {song_file}")
+    
     if serialized.track.title is None:
         raise Exception(f"Song name of {song_file} not found")
     else:
@@ -40,6 +51,7 @@ async def identify(song_file):
         subtitle = serialized.track.subtitle
     
     return title + " - " + subtitle + song_file_extension
+
 
 async def identifier_coroutine(queue, data, start_index, stride):
     for i in range(start_index, len(data), stride):
@@ -53,7 +65,16 @@ async def identifier_coroutine(queue, data, start_index, stride):
 async def renamer_coroutine(queue):
     while True:
         result = await queue.get()
-        print(f"renaming {result[0]} to {result[1]}")
+
+        file = result[0]
+        # sanitize new name
+        new_name = result[1].replace("/", " ").replace("\\", " ")
+
+        print(f"renaming {file} to {new_name}")
+        if prompt_user_yn("Continue? (y/n): "):
+            os.rename(file, new_name)
+        else:
+            pass
 
         # Notify the queue that the item has been processed
         queue.task_done()
@@ -95,6 +116,3 @@ if __name__ == "__main__":
 
     num_coroutines = 10
     asyncio.run(process(files, num_coroutines))
-
-def rename_file(file, new_name):
-    os.rename(file, new_name)

@@ -40,6 +40,9 @@ async def identify(song_file):
     if serialized is None:
         raise Exception(f"Shazam could not serialize the song from file {song_file}")
     
+    if serialized.track is None:
+        raise Exception(f"Shazam could not get track data for the song from file {song_file}")
+
     if serialized.track.title is None:
         raise Exception(f"Song name of {song_file} not found")
     else:
